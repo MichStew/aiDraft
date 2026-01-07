@@ -201,7 +201,7 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-                <span className="text-[10px] uppercase tracking-[0.18em]">AI Coach</span>
+                <span className="text-xs">Coach</span>
               </button>
               <button
                 onClick={() => navigateTo("goals")}
