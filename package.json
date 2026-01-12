@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "server": "node server/index.js",
+    "dev:server": "node --watch server/index.js"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -39,13 +41,22 @@
     "@radix-ui/react-toggle": "1.1.2",
     "@radix-ui/react-toggle-group": "1.1.2",
     "@radix-ui/react-tooltip": "1.1.8",
+    "bcryptjs": "2.4.3",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",
+    "cookie-parser": "1.4.7",
+    "cors": "2.8.5",
     "date-fns": "3.6.0",
+    "dotenv": "16.4.7",
     "embla-carousel-react": "8.6.0",
+    "express": "4.19.2",
+    "express-rate-limit": "7.4.0",
+    "helmet": "7.1.0",
     "input-otp": "1.4.2",
+    "jsonwebtoken": "9.0.2",
     "lucide-react": "0.487.0",
+    "mongodb": "6.8.1",
     "motion": "12.23.24",
     "native": "^0.3.3",
     "next-themes": "0.4.6",

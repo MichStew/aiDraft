@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { ChevronLeft, Battery, Wifi, Download, Sliders } from "lucide-react";
+import { ChevronLeft, Battery, Wifi, Download, Sliders, LogOut, User } from "lucide-react";
 import { ConnectionStatus } from "../../App";
+import { useAuth } from "../../hooks/useAuth";
 
 interface DeviceSettingsProps {
   onBack: () => void;
@@ -19,6 +20,7 @@ export function DeviceSettings({
 }: DeviceSettingsProps) {
   const [sensitivity, setSensitivity] = useState<"low" | "medium" | "high">("medium");
   const [showForgetModal, setShowForgetModal] = useState(false);
+  const { user, logout } = useAuth();
 
   const batteryHistory = [92, 88, 85, 82, 80, 78, 75, 73];
   const isConnected = connectionStatus === "connected";
@@ -62,7 +64,7 @@ export function DeviceSettings({
               <Wifi className="w-8 h-8 text-[#0B0B0D]" />
             </div>
             <div className="flex-1">
-              <h3 className="text-white mb-1">Xiao-ACQD-01</h3>
+              <h3 className="text-white mb-1">Purifier-ACQD-01</h3>
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${statusDotClass}`} />
                 <span className={`text-sm ${statusTextClass}`}>{statusLabel}</span>
@@ -111,6 +113,29 @@ export function DeviceSettings({
               </button>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Account */}
+      <div className="px-6 mb-6">
+        <div className="bg-[#1C1C1E] rounded-[18px] p-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF3AF2]/20 to-[#00F0FF]/10 flex items-center justify-center">
+              <User className="w-5 h-5 text-[#00F0FF]" />
+            </div>
+            <div>
+              <p className="text-white">Signed in</p>
+              <p className="text-sm text-[#A6A6A6]">{user?.email ?? "Unknown"}</p>
+            </div>
+          </div>
+
+          <button
+            onClick={logout}
+            className="w-full bg-[#2C2C2E] text-white rounded-[14px] py-2 text-sm hover:bg-[#3A3A3C] transition-colors flex items-center justify-center gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
         </div>
       </div>
 
@@ -216,7 +241,7 @@ export function DeviceSettings({
           <div className="bg-[#1C1C1E] rounded-[24px] p-6 max-w-sm w-full">
             <h3 className="text-xl text-white mb-3">Forget Device?</h3>
             <p className="text-[#A6A6A6] text-sm mb-6">
-              This will remove Xiao-ACQD-01 from your connected devices. You'll need to pair it again to use it.
+              This will remove Purifier-ACQD-01 from your connected devices. You'll need to pair it again to use it.
             </p>
             <div className="flex gap-3">
               <button

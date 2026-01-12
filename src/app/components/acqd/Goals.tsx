@@ -1,22 +1,91 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, Bell, Target } from "lucide-react";
-import { Button } from "../ui/button";
+import { useUserSettings } from "../../hooks/useUserSettings";
 
 interface GoalsProps {
   onBack: () => void;
 }
 
 export function Goals({ onBack }: GoalsProps) {
-  const [dailyMax, setDailyMax] = useState(30);
-  const [reductionPlan, setReductionPlan] = useState(10);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const { settings, saveSettings, isSaving, error } = useUserSettings();
+  const [dailyMax, setDailyMax] = useState<number | null>(null);
+  const [reductionPlan, setReductionPlan] = useState<number | null>(null);
+  const initialSync = useRef(true);
+  const resolvedDailyMax = typeof dailyMax === "number" ? dailyMax : null;
+  const resolvedReductionPlan =
+    typeof reductionPlan === "number" ? reductionPlan : null;
+  const isReady = resolvedDailyMax !== null && resolvedReductionPlan !== null;
+  const notificationsEnabled = settings.notificationsEnabled;
+  const canToggleNotifications = typeof notificationsEnabled === "boolean";
 
-  const projectedSchedule = [
-    { week: 1, goal: dailyMax },
-    { week: 2, goal: Math.round(dailyMax * (1 - reductionPlan / 100)) },
-    { week: 3, goal: Math.round(dailyMax * Math.pow(1 - reductionPlan / 100, 2)) },
-    { week: 4, goal: Math.round(dailyMax * Math.pow(1 - reductionPlan / 100, 3)) },
-  ];
+  useEffect(() => {
+    if (typeof settings.goalPuffs === "number") {
+      setDailyMax(settings.goalPuffs);
+    }
+    if (typeof settings.reductionPlan === "number") {
+      setReductionPlan(settings.reductionPlan);
+    }
+  }, [settings.goalPuffs, settings.reductionPlan]);
+
+  useEffect(() => {
+    if (!isReady) return undefined;
+    if (initialSync.current) {
+      initialSync.current = false;
+      return undefined;
+    }
+
+    const currentSettings = {
+      goalPuffs: settings.goalPuffs,
+      reductionPlan: settings.reductionPlan,
+    };
+
+    if (
+      currentSettings.goalPuffs === resolvedDailyMax &&
+      currentSettings.reductionPlan === resolvedReductionPlan
+    ) {
+      return undefined;
+    }
+
+    const timeout = setTimeout(() => {
+      saveSettings({
+        goalPuffs: resolvedDailyMax,
+        reductionPlan: resolvedReductionPlan,
+      });
+    }, 700);
+
+    return () => clearTimeout(timeout);
+  }, [
+    resolvedDailyMax,
+    resolvedReductionPlan,
+    saveSettings,
+    settings.goalPuffs,
+    settings.reductionPlan,
+    isReady,
+  ]);
+
+  const projectedSchedule = isReady
+    ? [
+        { week: 1, goal: resolvedDailyMax },
+        {
+          week: 2,
+          goal: Math.round(
+            resolvedDailyMax * (1 - resolvedReductionPlan / 100)
+          ),
+        },
+        {
+          week: 3,
+          goal: Math.round(
+            resolvedDailyMax * Math.pow(1 - resolvedReductionPlan / 100, 2)
+          ),
+        },
+        {
+          week: 4,
+          goal: Math.round(
+            resolvedDailyMax * Math.pow(1 - resolvedReductionPlan / 100, 3)
+          ),
+        },
+      ]
+    : [];
 
   const tips = [
     "Take deep breaths when you feel a craving",
@@ -27,10 +96,8 @@ export function Goals({ onBack }: GoalsProps) {
 
   return (
     <div className="min-h-full bg-[#0B0B0D] bg-gradient-to-br from-[#1A0A24] via-[#0B0B0D] to-[#06141C] pb-6">
-      {/* Status Bar Space */}
       <div className="h-12" />
-      
-      {/* Header */}
+
       <div className="px-6 mb-6">
         <div className="flex items-center gap-4">
           <button
@@ -39,7 +106,12 @@ export function Goals({ onBack }: GoalsProps) {
           >
             <ChevronLeft className="w-5 h-5 text-white" />
           </button>
-          <h1 className="text-2xl text-white tracking-tight">Goals & Coaching</h1>
+          <div>
+            <h1 className="text-2xl text-white tracking-tight">Goals & Coaching</h1>
+            <p className="text-xs text-[#A6A6A6]">
+              {isSaving ? "Saving your goals..." : "Auto-saved to your account"}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -52,12 +124,15 @@ export function Goals({ onBack }: GoalsProps) {
             </div>
             <div>
               <p className="text-[#A6A6A6] text-sm">Daily Goal</p>
-              <p className="text-3xl text-white">{dailyMax}</p>
+              <p className="text-3xl text-white">
+                {isReady ? resolvedDailyMax : "--"}
+              </p>
             </div>
           </div>
           <p className="text-sm text-[#A6A6A6]">
-            You're on track! Keep it up to reach your goal.
+            {isReady ? "You're on track! Keep it up." : "Loading your goal settings..."}
           </p>
+          {error && <p className="text-xs text-[#FF5A6E] mt-2">{error}</p>}
         </div>
       </div>
 
@@ -65,36 +140,45 @@ export function Goals({ onBack }: GoalsProps) {
       <div className="px-6 mb-6">
         <div className="bg-[#1C1C1E] rounded-[18px] p-4">
           <h3 className="text-white mb-4">Set Daily Max</h3>
-          
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[#A6A6A6] text-sm">Maximum puffs per day</span>
-              <span className="text-[#00F0FF]">{dailyMax}</span>
+
+          {!isReady && (
+            <div className="bg-[#0B0B0D] rounded-[14px] p-3 text-sm text-[#A6A6A6]">
+              Loading your daily goal...
             </div>
-            <input
-              type="range"
-              min="10"
-              max="50"
-              step="5"
-              value={dailyMax}
-              onChange={(e) => setDailyMax(parseInt(e.target.value))}
-              className="w-full h-2 bg-[#2C2C2E] rounded-full appearance-none cursor-pointer
-                [&::-webkit-slider-thumb]:appearance-none 
-                [&::-webkit-slider-thumb]:w-6 
-                [&::-webkit-slider-thumb]:h-6 
-                [&::-webkit-slider-thumb]:rounded-full 
-                [&::-webkit-slider-thumb]:bg-[#00F0FF]
-                [&::-webkit-slider-thumb]:shadow-lg
-                [&::-webkit-slider-thumb]:shadow-[#00F0FF]/50"
-              style={{
-                background: `linear-gradient(to right, #FF3AF2 0%, #00F0FF ${((dailyMax - 10) / 40) * 100}%, #2C2C2E ${((dailyMax - 10) / 40) * 100}%, #2C2C2E 100%)`
-              }}
-            />
-            <div className="flex justify-between text-xs text-[#A6A6A6] mt-1">
-              <span>10</span>
-              <span>50</span>
+          )}
+          {isReady && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[#A6A6A6] text-sm">Maximum puffs per day</span>
+                <span className="text-[#00F0FF]">{resolvedDailyMax}</span>
+              </div>
+              <input
+                type="range"
+                min="10"
+                max="60"
+                step="5"
+                value={resolvedDailyMax}
+                onChange={(e) => setDailyMax(parseInt(e.target.value))}
+                className="w-full h-2 bg-[#2C2C2E] rounded-full appearance-none cursor-pointer
+                  [&::-webkit-slider-thumb]:appearance-none
+                  [&::-webkit-slider-thumb]:w-6
+                  [&::-webkit-slider-thumb]:h-6
+                  [&::-webkit-slider-thumb]:rounded-full
+                  [&::-webkit-slider-thumb]:bg-[#00F0FF]
+                  [&::-webkit-slider-thumb]:shadow-lg
+                  [&::-webkit-slider-thumb]:shadow-[#00F0FF]/50"
+                style={{
+                  background: `linear-gradient(to right, #FF3AF2 0%, #00F0FF ${
+                  ((resolvedDailyMax - 10) / 50) * 100
+                }%, #2C2C2E ${((resolvedDailyMax - 10) / 50) * 100}%, #2C2C2E 100%)`,
+                }}
+              />
+              <div className="flex justify-between text-xs text-[#A6A6A6] mt-1">
+                <span>10</span>
+                <span>60</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -102,46 +186,53 @@ export function Goals({ onBack }: GoalsProps) {
       <div className="px-6 mb-6">
         <div className="bg-[#1C1C1E] rounded-[18px] p-4">
           <h3 className="text-white mb-4">Weekly Reduction Plan</h3>
-          
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[#A6A6A6] text-sm">Reduce by</span>
-              <span className="text-[#00F0FF]">{reductionPlan}% / week</span>
-            </div>
-            <input
-              type="range"
-              min="5"
-              max="25"
-              step="5"
-              value={reductionPlan}
-              onChange={(e) => setReductionPlan(parseInt(e.target.value))}
-              className="w-full h-2 bg-[#2C2C2E] rounded-full appearance-none cursor-pointer
-                [&::-webkit-slider-thumb]:appearance-none 
-                [&::-webkit-slider-thumb]:w-6 
-                [&::-webkit-slider-thumb]:h-6 
-                [&::-webkit-slider-thumb]:rounded-full 
-                [&::-webkit-slider-thumb]:bg-[#00F0FF]
-                [&::-webkit-slider-thumb]:shadow-lg
-                [&::-webkit-slider-thumb]:shadow-[#00F0FF]/50"
-              style={{
-                background: `linear-gradient(to right, #FF3AF2 0%, #00F0FF ${((reductionPlan - 5) / 20) * 100}%, #2C2C2E ${((reductionPlan - 5) / 20) * 100}%, #2C2C2E 100%)`
-              }}
-            />
-            <div className="flex justify-between text-xs text-[#A6A6A6] mt-1">
-              <span>5%</span>
-              <span>25%</span>
-            </div>
-          </div>
 
-          {/* Projected Schedule */}
+          {!isReady && (
+            <div className="bg-[#0B0B0D] rounded-[14px] p-3 text-sm text-[#A6A6A6]">
+              Loading your reduction plan...
+            </div>
+          )}
+          {isReady && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[#A6A6A6] text-sm">Reduce by</span>
+                <span className="text-[#00F0FF]">
+                  {resolvedReductionPlan}% / week
+                </span>
+              </div>
+              <input
+                type="range"
+                min="5"
+                max="25"
+                step="5"
+                value={resolvedReductionPlan}
+                onChange={(e) => setReductionPlan(parseInt(e.target.value))}
+                className="w-full h-2 bg-[#2C2C2E] rounded-full appearance-none cursor-pointer
+                  [&::-webkit-slider-thumb]:appearance-none
+                  [&::-webkit-slider-thumb]:w-6
+                  [&::-webkit-slider-thumb]:h-6
+                  [&::-webkit-slider-thumb]:rounded-full
+                  [&::-webkit-slider-thumb]:bg-[#00F0FF]
+                  [&::-webkit-slider-thumb]:shadow-lg
+                  [&::-webkit-slider-thumb]:shadow-[#00F0FF]/50"
+                style={{
+                  background: `linear-gradient(to right, #FF3AF2 0%, #00F0FF ${
+                  ((resolvedReductionPlan - 5) / 20) * 100
+                }%, #2C2C2E ${((resolvedReductionPlan - 5) / 20) * 100}%, #2C2C2E 100%)`,
+                }}
+              />
+              <div className="flex justify-between text-xs text-[#A6A6A6] mt-1">
+                <span>5%</span>
+                <span>25%</span>
+              </div>
+            </div>
+          )}
+
           <div className="mt-4 pt-4 border-t border-[#2C2C2E]">
             <p className="text-sm text-[#A6A6A6] mb-3">Projected Schedule</p>
             <div className="space-y-2">
               {projectedSchedule.map((item) => (
-                <div
-                  key={item.week}
-                  className="flex items-center justify-between text-sm"
-                >
+                <div key={item.week} className="flex items-center justify-between text-sm">
                   <span className="text-[#A6A6A6]">Week {item.week}</span>
                   <span className="text-white">{item.goal} puffs/day</span>
                 </div>
@@ -165,9 +256,15 @@ export function Goals({ onBack }: GoalsProps) {
               </div>
             </div>
             <button
-              onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-              className={`w-12 h-7 rounded-full transition-colors ${
-                notificationsEnabled ? "bg-gradient-to-r from-[#FF3AF2] to-[#00F0FF]" : "bg-[#2C2C2E]"
+              onClick={() => {
+                if (!canToggleNotifications) return;
+                saveSettings({ notificationsEnabled: !notificationsEnabled });
+              }}
+              disabled={!canToggleNotifications}
+              className={`w-12 h-7 rounded-full transition-colors disabled:opacity-50 ${
+                notificationsEnabled
+                  ? "bg-gradient-to-r from-[#FF3AF2] to-[#00F0FF]"
+                  : "bg-[#2C2C2E]"
               }`}
             >
               <div
@@ -185,10 +282,7 @@ export function Goals({ onBack }: GoalsProps) {
         <h3 className="text-white mb-4">Suggested Tips</h3>
         <div className="space-y-3">
           {tips.map((tip, index) => (
-            <div
-              key={index}
-              className="bg-[#1C1C1E] rounded-[18px] p-4 flex items-start gap-3"
-            >
+            <div key={index} className="bg-[#1C1C1E] rounded-[18px] p-4 flex items-start gap-3">
               <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#FF3AF2]/20 to-[#00F0FF]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <span className="text-[#00F0FF] text-sm">{index + 1}</span>
               </div>
